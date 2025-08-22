@@ -270,7 +270,7 @@ export function MonitorApplicationsListPage() {
                     )}
 
                     <div className="flex items-center justify-between pt-2 border-t">
-                      <div className="flex items-center text-xs text-muted-foreground">
+                      <div className="flex items-center text-xs text-muted-foreground w-full">
                         <Calendar className="h-3 w-3 mr-1" />
                         {formatDistanceToNow(new Date(app.updatedAt), { addSuffix: true })}
                       </div>

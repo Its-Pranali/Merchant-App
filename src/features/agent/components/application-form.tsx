@@ -12,7 +12,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
+import { useEffect, useRef } from "react";
+import * as pdfjsLib from "pdfjs-dist";
+import pdfjsWorker from "pdfjs-dist/build/pdf.worker?url";
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 import {
   ChevronLeft,
   ChevronRight,
@@ -159,6 +163,49 @@ interface UploadedFile {
   type: string;
   url?: string;
 }
+
+
+
+
+
+
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+
+
+interface PDFPreviewProps {
+  url: string;
+}
+
+export function PDFPreview({ url }: PDFPreviewProps) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    const renderPage = async () => {
+      const pdf = await pdfjsLib.getDocument(url).promise;
+      const page = await pdf.getPage(1);
+
+      const viewport = page.getViewport({ scale: 0.3 });
+      const canvas = canvasRef.current!;
+      const context = canvas.getContext("2d")!;
+
+      canvas.height = viewport.height;
+      canvas.width = viewport.width;
+
+      await page.render({ canvasContext: context, viewport }).promise;
+    };
+
+    renderPage();
+  }, [url]);
+
+  return <canvas ref={canvasRef} className="border rounded-md object-cover" style={{ width: "45px", height: "55px" }} />;
+}
+
+
+
+
+
+
 
 export function ApplicationForm({ initialData, isEdit = false }: ApplicationFormProps) {
   const [currentStage, setCurrentStage] = useState(1);
@@ -322,6 +369,9 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
     form.setValue(fieldName as keyof ApplicationFormData, file as any);
     toast.success("File uploaded successfully");
   };
+
+
+
 
   const removeFile = (fieldName: string) => {
     const file = uploadedFiles[fieldName];
@@ -902,7 +952,7 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
                             </div>
                           ) : (
                             <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
-                              <div className="flex items-center gap-3">
+                              {/* <div className="flex items-center gap-3">
                                 <FileText className="h-5 w-5 text-green-600" />
                                 <div>
                                   <p className="text-sm font-medium text-green-800 dark:text-green-200">
@@ -912,7 +962,44 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
                                     {formatFileSize(uploadedFiles.pan_document.size)}
                                   </p>
                                 </div>
+                              </div> */}
+
+                              <div className="flex items-center gap-3 w-full">
+
+                                <FileText className="h-8 w-5 text-green-600" />
+                                <div>
+                                  <p className="text-sm font-medium text-green-800 dark:text-green-200">
+                                    {uploadedFiles.pan_document.name}
+                                  </p>
+                                  <p className="text-xs text-green-600 dark:text-green-400">
+                                    {formatFileSize(uploadedFiles.pan_document.size)}
+                                  </p>
+                                </div>
+
+
                               </div>
+                              <div className="flex items-center justify-end w-full gap-3">
+                                <div></div>
+                                {uploadedFiles.pan_document.type.startsWith("image/") ? (
+                                  // Show image thumbnail
+                                  <img
+                                    src={uploadedFiles.pan_document.url}
+                                    alt="Preview"
+                                    className="object-contain bg-white rounded-md border"
+                                    style={{ width: "45px", height: "55px" }}
+                                  />
+                                ) : uploadedFiles.pan_document.type === "application/pdf" ? (
+                                  // Show PDF first page
+                                  <PDFPreview url={uploadedFiles.pan_document.url} />
+                                ) : (
+                                  // Fallback icon
+                                  <FileText className="h-6 w-6 text-gray-600" />
+                                )}
+
+                              </div>
+
+
+
                               <Button
                                 type="button"
                                 variant="ghost"
@@ -949,7 +1036,7 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
                             </div>
                           ) : (
                             <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
-                              <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-3 w-full">
                                 <FileText className="h-5 w-5 text-green-600" />
                                 <div>
                                   <p className="text-sm font-medium text-green-800 dark:text-green-200">
@@ -959,6 +1046,26 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
                                     {formatFileSize(uploadedFiles.aadhar_document.size)}
                                   </p>
                                 </div>
+                              </div>
+
+                              <div className="flex items-center justify-end w-full gap-3">
+                                <div></div>
+                                {uploadedFiles.aadhar_document.type.startsWith("image/") ? (
+                                  // Show image thumbnail
+                                  <img
+                                    src={uploadedFiles.aadhar_document.url}
+                                    alt="Preview"
+                                    className="object-contain bg-white rounded-md border"
+                                    style={{ width: "45px", height: "55px" }}
+                                  />
+                                ) : uploadedFiles.aadhar_document.type === "application/pdf" ? (
+                                  // Show PDF first page
+                                  <PDFPreview url={uploadedFiles.aadhar_document.url} />
+                                ) : (
+                                  // Fallback icon
+                                  <FileText className="h-6 w-6 text-gray-600" />
+                                )}
+
                               </div>
                               <Button
                                 type="button"
@@ -997,7 +1104,7 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
                             </div>
                           ) : (
                             <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
-                              <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-3 w-full">
                                 <FileText className="h-5 w-5 text-green-600" />
                                 <div>
                                   <p className="text-sm font-medium text-green-800 dark:text-green-200">
@@ -1008,6 +1115,27 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
                                   </p>
                                 </div>
                               </div>
+
+                              <div className="flex items-center justify-end w-full gap-3">
+                                <div></div>
+                                {uploadedFiles.bank_statement.type.startsWith("image/") ? (
+                                  // Show image thumbnail
+                                  <img
+                                    src={uploadedFiles.bank_statement.url}
+                                    alt="Preview"
+                                    className="object-contain bg-white rounded-md border"
+                                    style={{ width: "45px", height: "55px" }}
+                                  />
+                                ) : uploadedFiles.bank_statement.type === "application/pdf" ? (
+                                  // Show PDF first page
+                                  <PDFPreview url={uploadedFiles.bank_statement.url} />
+                                ) : (
+                                  // Fallback icon
+                                  <FileText className="h-6 w-6 text-gray-600" />
+                                )}
+
+                              </div>
+
                               <Button
                                 type="button"
                                 variant="ghost"
@@ -1046,7 +1174,7 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
                           ) : (
                             <div className="space-y-3">
                               <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-3 w-full">
                                   <Image className="h-5 w-5 text-green-600" />
                                   <div>
                                     <p className="text-sm font-medium text-green-800 dark:text-green-200">

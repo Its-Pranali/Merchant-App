@@ -58,14 +58,15 @@ export function Sidebar({ onNavigate }: SidebarProps) {
         <div className="flex items-center justify-center gap-3">
           {/* Light Logo (light mode only) */}
           <img
-            src="../dist/assets/images/vol2-1.png"
+            // src="../dist/assets/images/vol2-1.png"
+            src="./dist/assets/images/vol2-1.png"
             className="block dark:hidden w-[71%] h-auto mx-auto"
             alt="Light Logo"
           />
 
           {/* Dark Logo (dark mode only) */}
           <img
-            src="../dist/assets/images/site-logo.png"
+            src="./dist/assets/images/site-logo.png"
             className="hidden dark:block w-[77%] py-1"
             alt="Dark Logo"
           />
