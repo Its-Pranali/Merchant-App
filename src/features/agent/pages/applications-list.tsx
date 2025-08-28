@@ -10,12 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { StatusChip } from "@/components/status-chip";
 import { RoleGuard } from "@/components/role-guard";
-import { 
-  Plus, 
-  Search, 
-  Filter, 
-  FileText, 
-  Edit, 
+import axios from "axios";
+import {
+  Plus,
+  Search,
+  Filter,
+  FileText,
+  Edit,
   Send,
   Clock,
   Calendar
@@ -37,13 +38,22 @@ export function ApplicationsListPage() {
   const [statusFilter, setStatusFilter] = useState<ApplicationStatus | 'ALL'>('ALL');
 
   const { data: applications = [], isLoading } = useQuery({
-    queryKey: ['applications', { mine: true, status: statusFilter === 'ALL' ? undefined : [statusFilter], q: searchQuery }],
-    queryFn: () => mockApi.listApplications({
-      mine: true,
-      status: statusFilter === 'ALL' ? undefined : [statusFilter],
-      q: searchQuery || undefined,
-    }),
+    queryKey: ['applications', { status: statusFilter, q: searchQuery }],
+    queryFn: async () => {
+      const response = await axios.get(
+        "http://192.168.0.123:8081/api/agents/getAllApplications",
+        {
+          params: {
+            status: statusFilter === 'ALL' ? undefined : statusFilter,
+            q: searchQuery || undefined,
+          },
+        }
+      );
+      return response.data; // backend should return an array
+    },
+    keepPreviousData: true, // optional, keeps old data while fetching new
   });
+
 
   const getActionButton = (app: any) => {
     switch (app.status) {
@@ -159,7 +169,7 @@ export function ApplicationsListPage() {
               <FileText className="h-16 w-16 text-muted-foreground mb-4" />
               <h3 className="text-lg font-semibold mb-2">No applications found</h3>
               <p className="text-muted-foreground text-center mb-6">
-                {searchQuery || statusFilter !== 'ALL' 
+                {searchQuery || statusFilter !== 'ALL'
                   ? "Try adjusting your search or filters"
                   : "Get started by creating your first merchant application"
                 }
@@ -188,7 +198,7 @@ export function ApplicationsListPage() {
                     <div className="flex items-start justify-between">
                       <div className="space-y-1 flex-1">
                         <CardTitle className="text-lg line-clamp-1">
-                          {app.businessName}
+                          {app.applName}
                         </CardTitle>
                         {app.tradeName && (
                           <CardDescription className="line-clamp-1">
@@ -203,11 +213,11 @@ export function ApplicationsListPage() {
                     <div className="space-y-2">
                       <div className="flex items-center text-sm text-muted-foreground">
                         <span className="font-medium w-20">Contact:</span>
-                        <span>{app.contactName}</span>
+                        <span>{app.contactPerson}</span>
                       </div>
                       <div className="flex items-center text-sm text-muted-foreground">
                         <span className="font-medium w-20">Phone:</span>
-                        <span>{app.phone}</span>
+                        <span>{app.mobile}</span>
                       </div>
                       <div className="flex items-center text-sm text-muted-foreground">
                         <span className="font-medium w-20">PAN:</span>
@@ -234,7 +244,7 @@ export function ApplicationsListPage() {
                     <div className="flex items-center justify-between pt-2 border-t">
                       <div className="flex items-center text-xs text-muted-foreground">
                         <Calendar className="h-3 w-3 mr-1" />
-                        {formatDistanceToNow(new Date(app.updatedAt), { addSuffix: true })}
+                        {formatDistanceToNow(new Date(app.creationDate), { addSuffix: true })}
                       </div>
                       {getActionButton(app)}
                     </div>

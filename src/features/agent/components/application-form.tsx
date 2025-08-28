@@ -80,57 +80,90 @@ const applicationSchema = z.object({
 
 type ApplicationFormData = z.infer<typeof applicationSchema>;
 
+
 const stages = [
   {
     id: 1,
     title: "Business Info",
     icon: Building2,
-    fields: ["appl_name", "firm", "dba"],
+    fields: [
+      { name: "appl_name", required: true },
+      { name: "firm", required: true },
+      { name: "dba", required: false } // optional
+    ],
     description: "Basic business details"
   },
   {
     id: 2,
     title: "Contact",
     icon: User,
-    fields: ["contact_person", "mobile"],
+    fields: [
+      { name: "contact_person", required: true },
+      { name: "mobile", required: true }
+    ],
     description: "Contact information"
   },
   {
     id: 3,
     title: "Address",
     icon: MapPin,
-    fields: ["inst_addr1", "inst_addr2", "inst_addr3", "inst_locality", "city", "inst_pincode"],
+    fields: [
+      { name: "inst_addr1", required: true },
+      { name: "inst_addr2", required: false },
+      { name: "inst_addr3", required: false },
+      { name: "inst_locality", required: true },
+      { name: "city", required: true },
+      { name: "inst_pincode", required: true }
+    ],
     description: "Installation address"
   },
   {
     id: 4,
     title: "Business Details",
     icon: CreditCard,
-    fields: ["mcc", "pan", "pan_dob"],
+    fields: [
+      { name: "mcc", required: true },
+      { name: "pan", required: true },
+      { name: "pan_dob", required: true }
+    ],
     description: "PAN and MCC details"
   },
   {
     id: 5,
     title: "Bank Details",
     icon: Banknote,
-    fields: ["me_ac_type", "me_name", "me_ifsc", "me_ac_no"],
+    fields: [
+      { name: "me_ac_type", required: true },
+      { name: "me_name", required: true },
+      { name: "me_ifsc", required: true },
+      { name: "me_ac_no", required: true }
+    ],
     description: "Banking information"
   },
   {
     id: 6,
     title: "Documents",
     icon: FileText,
-    fields: ["pan_document", "aadhar_document", "bank_statement", "shop_photo"],
+    fields: [
+      { name: "pan_document", required: true },
+      { name: "aadhar_document", required: true },
+      { name: "bank_statement", required: false },
+      { name: "shop_photo", required: true }
+    ],
     description: "Upload required documents"
   },
   {
     id: 7,
     title: "Service Type",
     icon: Check,
-    fields: ["qr_boombox"],
+    fields: [
+      { name: "qr_boombox", required: true }
+    ],
     description: "Choose service type"
   }
 ];
+
+
 
 const mccCodes = [
   { value: "5411", label: "5411 - Grocery Stores" },
@@ -163,10 +196,6 @@ interface UploadedFile {
   type: string;
   url?: string;
 }
-
-
-
-
 
 
 
@@ -218,6 +247,7 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
 
   const form = useForm<ApplicationFormData>({
     resolver: zodResolver(applicationSchema),
+    mode: "onChange", // ✅ validate on every change so isValid updates live
     defaultValues: {
       appl_name: "",
       firm: "",
@@ -246,7 +276,8 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
     },
   });
 
-  const { mutate: saveApplication, isPending: isSaving } = useMutation({
+
+  const { mutate: saveApplication } = useMutation({
     mutationFn: async (data: ApplicationFormData) => {
       const applicationData = {
         businessName: data.firm,
@@ -314,12 +345,24 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
     return isValid;
   };
 
-  const nextStage = async () => {
-    const isValid = await validateCurrentStage();
-    if (isValid && currentStage < stages.length) {
+  // const nextStage = async () => {
+  //   const isValid = await validateCurrentStage();
+  //   if (isValid && currentStage < stages.length) {
+  //     setCurrentStage(currentStage + 1);
+  //   }
+  // };
+
+  const nextStage = () => {
+    if (!isStageComplete(currentStage)) {
+      toast.error("Please fill all required (*) fields before continuing.");
+      return;
+    }
+
+    if (currentStage < stages.length) {
       setCurrentStage(currentStage + 1);
     }
   };
+
 
   const prevStage = () => {
     if (currentStage > 1) {
@@ -372,6 +415,77 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
 
 
 
+  // const handleFileUpload = async (
+  //   applicationId: string,
+  //   fieldName: string,
+  //   file: File
+  // ) => {
+  //   // File size validation
+  //   if (file.size > 5 * 1024 * 1024) {
+  //     toast.error("File size must be less than 5MB");
+  //     return;
+  //   }
+
+  //   // File type validation
+  //   const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+  //   if (!allowedTypes.includes(file.type)) {
+  //     toast.error("Only JPG, PNG, and PDF files are allowed");
+  //     return;
+  //   }
+
+  //   // Preview URL for the file
+  //   const url = URL.createObjectURL(file);
+
+  //   // Local update
+  //   const uploadedFile: UploadedFile = {
+  //     name: file.name,
+  //     size: file.size,
+  //     type: file.type,
+  //     url: url
+  //   };
+
+  //   setUploadedFiles(prev => ({
+  //     ...prev,
+  //     [fieldName]: uploadedFile
+  //   }));
+
+  //   form.setValue(fieldName as keyof ApplicationFormData, file as any);
+
+  //   try {
+  //     // Prepare form data for API
+  //     const formData = new FormData();
+  //     formData.append("file", file);
+
+  //     // Determine document type from fieldName if needed
+  //     const documentType = fieldName; // or map fieldName to your API documentType
+
+  //     const response = await fetch(
+  //       `http://192.168.0.123:8081/api/v1/files/applications/${applicationId}/documents/${documentType}/upload`,
+  //       { method: "POST", body: formData }
+  //     );
+
+  //     if (!response.ok) {
+  //       let errorMessage = "File upload failed";
+  //       try {
+  //         if (response.headers.get("Content-Type")?.includes("application/json")) {
+  //           const errorData = await response.json();
+  //           errorMessage = errorData.message || errorMessage;
+  //         }
+  //       } catch (err) {
+  //         console.warn("Could not parse JSON response", err);
+  //       }
+  //       throw new Error(errorMessage);
+  //     }
+
+  //     toast.success("File uploaded successfully");
+  //   } catch (error: any) {
+  //     console.error("Upload error:", error);
+  //     toast.error(error.message || "Failed to upload file");
+  //   }
+  // };
+
+
+
 
   const removeFile = (fieldName: string) => {
     const file = uploadedFiles[fieldName];
@@ -396,51 +510,38 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  // const isStageComplete = (stageId: number) => {
+  //   const stage = stages.find(s => s.id === stageId);
+  //   if (!stage) return false;
+
+  //   // For document stage, at least one document should be uploaded
+  //   if (stageId === 6) {
+  //     return Object.keys(uploadedFiles).length > 0;
+  //   }
+
+  //   return stage.fields.every(field => {
+  //     const value = form.getValues(field as keyof ApplicationFormData);
+  //     return value && value.toString().trim() !== "";
+  //   });
+  // };
+
+
   const isStageComplete = (stageId: number) => {
     const stage = stages.find(s => s.id === stageId);
     if (!stage) return false;
 
-    // For document stage, at least one document should be uploaded
+    // For document stage, at least one document required
     if (stageId === 6) {
       return Object.keys(uploadedFiles).length > 0;
     }
 
-    return stage.fields.every(field => {
-      const value = form.getValues(field as keyof ApplicationFormData);
-      return value && value.toString().trim() !== "";
-    });
-  };
-
-
-  // Inside your component
-
-  const [applicationId, setApplicationId] = useState<string | null>(null);
-
-  const saveStepData = async (step: number, data: any) => {
-    try {
-      const response = await fetch("http://localhost:8080/api/save-step", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          application_id: applicationId,
-          step,
-          data,
-        }),
+    return stage.fields
+      .filter(f => f.required) // ✅ only required fields matter
+      .every(f => {
+        const value = form.getValues(f.name as keyof ApplicationFormData);
+        return value && value.toString().trim() !== "";
       });
-
-      const result = await response.json();
-
-      if (!applicationId && result.application_id) {
-        setApplicationId(result.application_id); // store draft id
-      }
-    } catch (err) {
-      console.error("Error saving step:", err);
-    }
   };
-
-
-
-
 
 
   const onSubmitForReview = async (data: ApplicationFormData) => {
@@ -493,6 +594,160 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
     }
   };
 
+  // const [isSaving, setIsSaving] = useState(false);
+  // const [isDraftSaved, setIsDraftSaved] = useState(false);
+
+  // const agent_id = 10;
+
+  // const handleSaveDraft = async () => {
+  //   try {
+  //     setIsSaving(true);
+
+  //     const values = form.getValues();
+
+  //     const payload = {
+  //       applName: values.appl_name || "",
+  //       bankStatement: values.bank_statement || "",
+  //       contactPerson: values.contact_person || "",
+  //       shopPhoto: values.shop_photo || "",
+  //       mobile: values.mobile || "",
+  //       dba: values.dba || "",
+  //       firm: values.firm || "",
+  //       instAddr1: values.inst_addr1 || "",
+  //       instAddr2: values.inst_addr2 || "",
+  //       instAddr3: values.inst_addr3 || "",
+  //       instLocality: values.inst_locality || "",
+  //       instPincode: values.inst_pincode || "",
+  //       mcc: values.mcc || "",
+  //       meAcNo: values.me_ac_no || "",
+  //       meAcType: values.me_ac_type || "",
+  //       meIfsc: values.me_ifsc || "",
+  //       meName: values.me_name || "",
+  //       pan: values.pan || "",
+  //       panDob: values.pan_dob || "",
+  //       qrBoombox: values.qr_boombox || "",
+  //     };
+
+  //     const response = await fetch(`http://192.168.0.123:8081/api/agents/${agent_id}/saveApplicationDraft`, {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //       },
+  //       body: JSON.stringify(payload),
+  //     });
+
+  //     const data = await response.json();
+  //     console.log("Response:", data);
+
+  //   } catch (error) {
+  //     console.error("Error saving draft:", error);
+  //   } finally {
+  //     setIsSaving(false);
+  //   }
+  // };
+
+
+  const agent_id = 10;
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDraftSaved, setIsDraftSaved] = useState(false); // track draft save status
+  const [applicationId, setApplicationId] = useState<string | null>(null); // correct name
+
+  // ---------------- SAVE DRAFT ----------------
+  const handleSaveDraft = async (data: ApplicationFormData) => {
+    try {
+      setIsSaving(true);
+
+      const payload = {
+        applName: data.appl_name || "",
+        bankStatement: data.bank_statement || "",
+        contactPerson: data.contact_person || "",
+        shopPhoto: data.shop_photo || "",
+        mobile: data.mobile || "",
+        dba: data.dba || "",
+        firm: data.firm || "",
+        instAddr1: data.inst_addr1 || "",
+        instAddr2: data.inst_addr2 || "",
+        instAddr3: data.inst_addr3 || "",
+        instLocality: data.inst_locality || "",
+        instPincode: data.inst_pincode || "",
+        mcc: data.mcc || "",
+        meAcNo: data.me_ac_no || "",
+        meAcType: data.me_ac_type || "",
+        meIfsc: data.me_ifsc || "",
+        meName: data.me_name || "",
+        pan: data.pan || "",
+        panDob: data.pan_dob || "",
+        qrBoombox: data.qr_boombox || "",
+      };
+
+      const response = await fetch(
+        `http://192.168.0.123:8081/api/agents/${agent_id}/saveApplicationDraft`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log("Draft Response:", result);
+
+      //  use applicationId returned from backend
+      if (result?.applicationId) {
+        setApplicationId(result.applicationId);
+        setIsDraftSaved(true);
+        alert("Draft saved successfully!");
+      } else {
+        setIsDraftSaved(false);
+        alert("Draft saved, but no applicationId returned.");
+      }
+    } catch (error) {
+      console.error("Error saving draft:", error);
+      setIsDraftSaved(false);
+      alert("Failed to save draft");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // ---------------- FINAL SUBMIT ----------------
+  const handleFinalSubmit = async () => {
+    if (!applicationId) {
+      alert("No applicationId found. Please save draft first.");
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+
+      const response = await fetch(
+        `http://192.168.0.123:8081/api/agents/applications/${applicationId}/submitDraftedApplication`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log("Final Submit Response:", result);
+
+      alert("Application submitted successfully!");
+    } catch (error) {
+      console.error("Error submitting application:", error);
+      alert("Failed to submit application");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
 
 
 
@@ -530,8 +785,9 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
               return (
                 <div
                   key={stage.id}
+                  onClick={() => setCurrentStage(stage.id)}
                   className={cn(
-                    "flex flex-col items-center space-y-1 min-w-0 flex-shrink-0 p-1 level-icon",
+                    "flex flex-col items-center space-y-1 min-w-0 flex-shrink-0 p-1 level-icon cursor-pointer transition-transform",
                     isActive && "scale-110"
                   )}
                 >
@@ -540,21 +796,28 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
                       "w-6 h-6 rounded-full flex items-center justify-center transition-all",
                       isActive
                         ? "bg-primary text-primary-foreground shadow-lg"
-                        : isCompleted
+                        : isStageComplete(stage.id)
                           ? "bg-green-500 text-white"
-                          : "bg-muted text-muted-foreground"
+                          : stage.id < currentStage
+                            ? "bg-red-500 text-white"
+                            : "bg-muted text-muted-foreground"
                     )}
                   >
-                    {isCompleted && stage.id < currentStage ? (
+                    {isStageComplete(stage.id) ? (
                       <Check className="h-4 w-4" />
+                    ) : stage.id < currentStage ? (
+                      <X className="h-4 w-4" />
                     ) : (
                       <Icon className="h-4 w-4" />
                     )}
                   </div>
-                  <span className={cn(
-                    "text-xs font-medium text-center",
-                    isActive ? "text-primary" : "text-muted-foreground"
-                  )}>
+
+                  <span
+                    className={cn(
+                      "text-xs font-medium text-center",
+                      isActive ? "text-primary" : "text-muted-foreground"
+                    )}
+                  >
                     {stage.title}
                   </span>
                 </div>
@@ -580,7 +843,7 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
           </CardHeader>
 
           <CardContent>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form className="space-y-4">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={currentStage}
@@ -934,7 +1197,7 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
                           <Label className="text-base font-medium">PAN Card *</Label>
                           {!uploadedFiles.pan_document ? (
                             <div className="border-2 border-dashed border-muted-foreground/25 rounded-xl p-6 text-center">
-                              <input
+                              {/* <input
                                 type="file"
                                 id="pan_document"
                                 accept="image/*,.pdf"
@@ -943,7 +1206,23 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
                                   if (file) handleFileUpload('pan_document', file);
                                 }}
                                 className="hidden"
+                              /> */}
+
+                              <input
+                                type="file"
+                                id="pan_document"
+                                accept="image/*,.pdf"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+
+                                  const applicationId = "YOUR_APPLICATION_ID_HERE"; // replace with actual ID
+                                  handleFileUpload(applicationId, 'pan_document', file);
+                                }}
+                                className="hidden"
                               />
+
+
                               <label htmlFor="pan_document" className="cursor-pointer">
                                 <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
                                 <p className="text-sm font-medium">Upload PAN Card</p>
@@ -1297,35 +1576,31 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
                   </Button>
                 ) : (
                   <div className="flex gap-2 flex-1">
+
+
+
                     <Button
-                      type="submit"
-                      variant="outline"
-                      disabled={isSaving}
+                      type="button"
+                      onClick={form.handleSubmit(handleSaveDraft, () => {
+                        alert("Please fill all required fields before saving draft");
+                      })}
+                      disabled={isSaving} // disable while saving
                       className="flex-1 h-12"
                     >
                       {isSaving ? "Saving..." : "Save Draft"}
                     </Button>
 
-
                     <Button
                       type="button"
-                      onClick={form.handleSubmit(onSubmitForReview)}
-                      disabled={isSubmitting}
+                      onClick={handleFinalSubmit}
+                      disabled={!isDraftSaved || isSaving} //  only enable after draft saved
                       className="flex-1 h-12"
                     >
-                      {isSubmitting ? "Submitting..." : "Submit"}
+                      {isSaving ? "Submitting..." : "Submit"}
                     </Button>
 
 
 
-                    {/* <Button
-                      type="button"
-                      onClick={form.handleSubmit(onSubmitForReview)}
-                      disabled={isSubmitting}
-                      className="flex-1 h-12"
-                    >
-                      {isSubmitting ? "Submitting..." : "Submit"}
-                    </Button> */}
                   </div>
                 )}
               </div>

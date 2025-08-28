@@ -41,35 +41,35 @@ export function ReviewQueuePage() {
 
 
 
-//   const { data: applications = [], isLoading } = useQuery({
-//   queryKey: ['applications', { role: 'APPROVER', filters }],
-//   queryFn: async () => {
-//     const response = await axios.get("http://192.168.0.144:8086/api/approver/applications/submitted", {
-//       params: {
-//         role: "APPROVER",
-//         status: filters.statuses.length > 0 ? filters.statuses.join(",") : "SUBMITTED",
-//         // q: filters.search || undefined,
-//       },
-//     });
-//     console.log(response);
-//     return response.data;
-//   },
-// });
-
-const { data: applications = [], isLoading } = useQuery({
+  const { data: applications = [], isLoading } = useQuery({
   queryKey: ['applications', { role: 'APPROVER', filters }],
   queryFn: async () => {
     const response = await axios.get("http://192.168.0.144:8086/api/approver/applications/submitted", {
       params: {
         role: "APPROVER",
         status: filters.statuses.length > 0 ? filters.statuses.join(",") : "SUBMITTED",
+        // q: filters.search || undefined,
       },
     });
-
-    // console.log("API response:", response.data);
-    return response.data; // 👈 adjust based on API
+    console.log(response);
+    return response.data;
   },
 });
+
+// const { data: applications = [], isLoading } = useQuery({
+//   queryKey: ['applications', { role: 'APPROVER', filters }],
+//   queryFn: async () => {
+//     const response = await axios.get("http://192.168.0.123:8086/api/approver/applications/submitted", {
+//       params: {
+//         role: "APPROVER",
+//         status: filters.statuses.length > 0 ? filters.statuses.join(",") : "SUBMITTED",
+//       },
+//     });
+
+//     // console.log("API response:", response.data);
+//     return response.data; // 👈 adjust based on API
+//   },
+// });
 
 
 
