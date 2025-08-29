@@ -15,7 +15,10 @@ import { Progress } from "@/components/ui/progress";
 import { useEffect, useRef } from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker?url";
+import { v4 as uuidv4 } from "uuid";
 
+const uniqueId = uuidv4(); // generates each render
+console.log("id " + uniqueId);
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 import {
   ChevronLeft,
@@ -142,6 +145,15 @@ const stages = [
   },
   {
     id: 6,
+    title: "Service Type",
+    icon: Check,
+    fields: [
+      { name: "qr_boombox", required: true }
+    ],
+    description: "Choose service type"
+  },
+  {
+    id: 7,
     title: "Documents",
     icon: FileText,
     fields: [
@@ -152,15 +164,7 @@ const stages = [
     ],
     description: "Upload required documents"
   },
-  {
-    id: 7,
-    title: "Service Type",
-    icon: Check,
-    fields: [
-      { name: "qr_boombox", required: true }
-    ],
-    description: "Choose service type"
-  }
+
 ];
 
 
@@ -242,7 +246,6 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
   const navigate = useNavigate();
   const { id } = useParams();
   const queryClient = useQueryClient();
-
 
 
   const form = useForm<ApplicationFormData>({
@@ -398,11 +401,17 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
     const url = URL.createObjectURL(file);
 
     const uploadedFile: UploadedFile = {
-      name: file.name,
+      name: uniqueId + "_" + file.name,
       size: file.size,
       type: file.type,
       url: url
     };
+    if (uploadedFile.name) {
+      localStorage.setItem("uploadedFiles", uploadedFile.name);
+    }
+    console.log("File name:", uploadedFile.name);
+    console.log("File name:", uploadedFile);
+    console.log(localStorage.getItem('uploadedFiles'));
 
     setUploadedFiles(prev => ({
       ...prev,
@@ -415,74 +424,7 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
 
 
 
-  // const handleFileUpload = async (
-  //   applicationId: string,
-  //   fieldName: string,
-  //   file: File
-  // ) => {
-  //   // File size validation
-  //   if (file.size > 5 * 1024 * 1024) {
-  //     toast.error("File size must be less than 5MB");
-  //     return;
-  //   }
 
-  //   // File type validation
-  //   const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
-  //   if (!allowedTypes.includes(file.type)) {
-  //     toast.error("Only JPG, PNG, and PDF files are allowed");
-  //     return;
-  //   }
-
-  //   // Preview URL for the file
-  //   const url = URL.createObjectURL(file);
-
-  //   // Local update
-  //   const uploadedFile: UploadedFile = {
-  //     name: file.name,
-  //     size: file.size,
-  //     type: file.type,
-  //     url: url
-  //   };
-
-  //   setUploadedFiles(prev => ({
-  //     ...prev,
-  //     [fieldName]: uploadedFile
-  //   }));
-
-  //   form.setValue(fieldName as keyof ApplicationFormData, file as any);
-
-  //   try {
-  //     // Prepare form data for API
-  //     const formData = new FormData();
-  //     formData.append("file", file);
-
-  //     // Determine document type from fieldName if needed
-  //     const documentType = fieldName; // or map fieldName to your API documentType
-
-  //     const response = await fetch(
-  //       `http://192.168.0.123:8081/api/v1/files/applications/${applicationId}/documents/${documentType}/upload`,
-  //       { method: "POST", body: formData }
-  //     );
-
-  //     if (!response.ok) {
-  //       let errorMessage = "File upload failed";
-  //       try {
-  //         if (response.headers.get("Content-Type")?.includes("application/json")) {
-  //           const errorData = await response.json();
-  //           errorMessage = errorData.message || errorMessage;
-  //         }
-  //       } catch (err) {
-  //         console.warn("Could not parse JSON response", err);
-  //       }
-  //       throw new Error(errorMessage);
-  //     }
-
-  //     toast.success("File uploaded successfully");
-  //   } catch (error: any) {
-  //     console.error("Upload error:", error);
-  //     toast.error(error.message || "Failed to upload file");
-  //   }
-  // };
 
 
 
@@ -647,7 +589,7 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
   // };
 
 
-  const agent_id = 10;
+  const agent_id = 15;
   const [isSaving, setIsSaving] = useState(false);
   const [isDraftSaved, setIsDraftSaved] = useState(false); // track draft save status
   const [applicationId, setApplicationId] = useState<string | null>(null); // correct name
@@ -713,6 +655,10 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
       setIsSaving(false);
     }
   };
+
+  //---------------Upload Ducuments----------------
+
+
 
   // ---------------- FINAL SUBMIT ----------------
   const handleFinalSubmit = async () => {
@@ -1184,6 +1130,38 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
                   {/* Stage 6: Service Type */}
                   {currentStage === 6 && (
                     <>
+                      <div className="space-y-2">
+                        <Label htmlFor="qr_boombox">Service Type *</Label>
+                        <Select
+                          value={form.watch("qr_boombox")}
+                          onValueChange={(value) => form.setValue("qr_boombox", value)}
+                        >
+                          <SelectTrigger className="h-12">
+                            <SelectValue placeholder="Select service type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {serviceTypes.map((type) => (
+                              <SelectItem key={type.value} value={type.value}>
+                                {type.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {getFieldError("qr_boombox") && (
+                          <p className="text-sm text-red-500 flex items-center gap-1">
+                            <AlertCircle className="h-3 w-3" />
+                            {getFieldError("qr_boombox")}
+                          </p>
+                        )}
+                      </div>
+                    </>
+                  )}
+
+                  {/* Stage 7: Service Type */}
+                  {currentStage === 7 && (
+                    <>
+
+
                       <div className="space-y-6">
                         <div className="text-center">
                           <h3 className="text-lg font-semibold mb-2">Upload Required Documents</h3>
@@ -1197,7 +1175,7 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
                           <Label className="text-base font-medium">PAN Card *</Label>
                           {!uploadedFiles.pan_document ? (
                             <div className="border-2 border-dashed border-muted-foreground/25 rounded-xl p-6 text-center">
-                              {/* <input
+                              <input
                                 type="file"
                                 id="pan_document"
                                 accept="image/*,.pdf"
@@ -1206,9 +1184,9 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
                                   if (file) handleFileUpload('pan_document', file);
                                 }}
                                 className="hidden"
-                              /> */}
+                              />
 
-                              <input
+                              {/* <input
                                 type="file"
                                 id="pan_document"
                                 accept="image/*,.pdf"
@@ -1221,7 +1199,7 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
                                 }}
                                 className="hidden"
                               />
-
+ */}
 
                               <label htmlFor="pan_document" className="cursor-pointer">
                                 <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
@@ -1487,36 +1465,17 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
                           )}
                         </div>
                       </div>
-                    </>
-                  )}
 
-                  {/* Stage 7: Service Type */}
-                  {currentStage === 7 && (
-                    <>
-                      <div className="space-y-2">
-                        <Label htmlFor="qr_boombox">Service Type *</Label>
-                        <Select
-                          value={form.watch("qr_boombox")}
-                          onValueChange={(value) => form.setValue("qr_boombox", value)}
-                        >
-                          <SelectTrigger className="h-12">
-                            <SelectValue placeholder="Select service type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {serviceTypes.map((type) => (
-                              <SelectItem key={type.value} value={type.value}>
-                                {type.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {getFieldError("qr_boombox") && (
-                          <p className="text-sm text-red-500 flex items-center gap-1">
-                            <AlertCircle className="h-3 w-3" />
-                            {getFieldError("qr_boombox")}
-                          </p>
-                        )}
-                      </div>
+                      <Button
+                        type="button"
+                        onClick={form.handleSubmit(handleSaveDraft, () => {
+                          alert("Please fill all required fields before saving draft");
+                        })}
+                        disabled={isSaving} // disable while saving
+                        className="flex-1 h-12"
+                      >
+                        {isSaving ? "Saving..." : "Save Draft"}
+                      </Button>
 
                       {/* Summary */}
                       <div className="mt-6 p-4 bg-muted/50 rounded-lg">
@@ -1565,6 +1524,21 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
                   </Button>
                 )}
 
+
+
+                {currentStage === 6 && (
+                  <Button
+                    type="button"
+                    onClick={form.handleSubmit(handleSaveDraft, () => {
+                      alert("Please fill all required fields before saving draft");
+                    })}
+                    disabled={isSaving} // disable while saving
+                    className="flex-1 h-12"
+                  >
+                    {isSaving ? "Saving..." : "Save Draft"}
+                  </Button>
+                )}
+
                 {currentStage < stages.length ? (
                   <Button
                     type="button"
@@ -1579,16 +1553,6 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
 
 
 
-                    <Button
-                      type="button"
-                      onClick={form.handleSubmit(handleSaveDraft, () => {
-                        alert("Please fill all required fields before saving draft");
-                      })}
-                      disabled={isSaving} // disable while saving
-                      className="flex-1 h-12"
-                    >
-                      {isSaving ? "Saving..." : "Save Draft"}
-                    </Button>
 
                     <Button
                       type="button"

@@ -54,13 +54,29 @@ export function ApplicationsListPage() {
     keepPreviousData: true, // optional, keeps old data while fetching new
   });
 
+  // Map UUIDs to simple numeric IDs
+  const appIdMap: Record<string, number> = {};
+  applications.forEach((app, index) => {
+    appIdMap[app.applicationId] = index + 1; // 1,2,3...
+  });
+
+
+  // // After fetching applications
+  // const appIdMap: Record<number, string> = {};
+  // applications.forEach((app, index) => {
+  //   appIdMap[index + 1] = app.applicationId; // numericId -> UUID
+  // });
+  // localStorage.setItem('appIdMap', JSON.stringify(appIdMap));
+
 
   const getActionButton = (app: any) => {
+    const numericId = appIdMap[app.applicationId]; // get mapped numeric ID
+
     switch (app.status) {
       case 'DRAFT':
         return (
           <Button asChild size="sm" variant="outline">
-            <Link to={`/applications/${app.id}/edit`}>
+            <Link to={`/applications/${numericId}/edit`}>
               <Edit className="h-4 w-4 mr-2" />
               Continue
             </Link>
@@ -69,7 +85,7 @@ export function ApplicationsListPage() {
       case 'DISCREPANCY':
         return (
           <Button asChild size="sm" variant="outline">
-            <Link to={`/applications/${app.id}/edit`}>
+            <Link to={`/applications/${numericId}/edit`}>
               <Edit className="h-4 w-4 mr-2" />
               Fix Issues
             </Link>
@@ -85,7 +101,7 @@ export function ApplicationsListPage() {
       case 'APPROVED':
         return (
           <Button asChild size="sm" variant="outline">
-            <Link to={`/applications/${app.id}/qr`}>
+            <Link to={`/applications/${numericId}/qr`}>
               <FileText className="h-4 w-4 mr-2" />
               View QR
             </Link>
@@ -95,6 +111,7 @@ export function ApplicationsListPage() {
         return null;
     }
   };
+
 
   return (
     <RoleGuard allowedRoles={['AGENT']}>
@@ -188,7 +205,7 @@ export function ApplicationsListPage() {
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {applications.map((app, index) => (
               <motion.div
-                key={app.id}
+                key={app.applicationId}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}

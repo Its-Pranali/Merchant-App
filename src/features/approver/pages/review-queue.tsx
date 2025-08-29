@@ -44,7 +44,7 @@ export function ReviewQueuePage() {
   const { data: applications = [], isLoading } = useQuery({
   queryKey: ['applications', { role: 'APPROVER', filters }],
   queryFn: async () => {
-    const response = await axios.get("http://192.168.0.144:8086/api/approver/applications/submitted", {
+    const response = await axios.get("http://192.168.0.123:8081/api/approver/applications/submitted", {
       params: {
         role: "APPROVER",
         status: filters.statuses.length > 0 ? filters.statuses.join(",") : "SUBMITTED",
@@ -237,7 +237,7 @@ export function ReviewQueuePage() {
                         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
                           <div>
                             <div className="flex items-center gap-2 mb-1">
-                              <h3 className="text-base sm:text-lg font-semibold break-words">{app.businessName}</h3>
+                              <h3 className="text-base sm:text-lg font-semibold break-words">{app.applName}</h3>
                               {getUrgencyBadge(app.updatedAt)}
                             </div>
                             {app.tradeName && (
@@ -259,7 +259,7 @@ export function ReviewQueuePage() {
                           <div className="flex items-center gap-2">
                             <Phone className="h-4 w-4 text-muted-foreground" />
                             <span className="font-medium">Phone:</span>
-                            <span>{app.phone}</span>
+                            <span>{app.mobile}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <Building2 className="h-4 w-4 text-muted-foreground" />
@@ -310,7 +310,7 @@ export function ReviewQueuePage() {
                             </div>
                             <div className="flex items-center gap-1">
                               <FileText className="h-3 w-3" />
-                              {app.docPath.length} documents
+                              {app.docPath?.length ?? 0} documents
                               {/* {app.panDob} documents */}
                             </div>
                           </div>
