@@ -38,7 +38,6 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { type } from "node:os";
 
 
 
@@ -663,98 +662,33 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
 
   //---------------Upload Ducuments----------------
 
-  // const handleFileUpload = async (
-  //   applicationId: string,
-  //   documentType: string,
-  //   file: File
-  // ) => {
-  //   try {
-  //     const [panPreview, setPanPreview] = useState<string | null>(null);
-  //     const formData = new FormData();
-  //     formData.append("file", file); //  check with backend if it expects "file" key
-  //     var doc_type = '';
-  //     if (documentType == 'pan_document') {
-  //       doc_type = "pan"
-  //     }
-  //     if (documentType == 'aadhar_document') {
-  //       doc_type = "aadhaar"
-  //     }
-  //     if (documentType == 'bank_statement') {
-  //       doc_type = "bankstatement"
-  //     }
-  //     if (documentType == 'shop_photo') {
-  //       doc_type = "shopphoto"
-  //     }
-  //     let response = await fetch(
-  //       `http://192.168.0.123:8081/api/v1/files/applications/${applicationId}/documents/${doc_type}/upload`,
-  //       {
-  //         method: "POST",
-  //         body: formData,
-  //       }
-  //     );
-  //     console.log(response);
-  //     if (!response.ok) {
-  //       throw new Error(`Upload failed with status ${response.status}`);
-  //     }
-  //     const result = await JSON.stringify(response);
-  //     console.log("Upload successful:", result);
-  //   } catch (error) {
-  //     console.error("File upload error:", error);
-  //   }
-  // };
-
-
-
   const handleFileUpload = async (
     applicationId: string,
     documentType: string,
     file: File
   ) => {
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("File size must be less than 5MB");
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append("file", file);
-
     try {
-      const res = await fetch(
+      const formData = new FormData();
+      formData.append("file", file); //  check with backend if it expects "file" key
+
+      const response = await fetch(
         `http://192.168.0.123:8081/api/v1/files/applications/${applicationId}/documents/${documentType}/upload`,
         {
           method: "POST",
-          body: formData,
+          body: formData, 
         }
       );
 
-      if (!res.ok) throw new Error("Upload failed");
-      toast.success(`${documentType} uploaded successfully`);
-      return await res.json();
-    } catch (err) {
-      console.error("Upload error:", err);
-      toast.error(`Failed to upload ${documentType}`);
-    }
-  };
-
-
-
-
-
-  const handleSaveDocuments = async () => {
-    if (!applicationId) {
-      toast.error("Application ID not found");
-      return;
-    }
-
-    for (const [docType, fileData] of Object.entries(uploadedFiles)) {
-      try {
-        await handleFileUpload(applicationId, docType, fileData.file);
-      } catch (err) {
-        console.error(`Error uploading ${docType}:`, err);
+      if (!response.ok) {
+        throw new Error(`Upload failed with status ${response.status}`);
       }
+
+      const result = await response.json();
+      console.log("Upload successful:", result);
+    } catch (error) {
+      console.error("File upload error:", error);
     }
   };
-
 
 
 
@@ -1276,24 +1210,15 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
                             <div className="border-2 border-dashed border-muted-foreground/25 rounded-xl p-6 text-center">
                               <input
                                 type="file"
-                                id="pan_document"
+                                id="pan"
                                 accept="image/*,.pdf"
                                 onChange={(e) => {
                                   const file = e.target.files?.[0];
-                                  if (!file) return;
-
-                                  const blobUrl = URL.createObjectURL(file);
-
-                                  setUploadedFiles(prev => ({
-                                    ...prev,
-                                    pan_document: {
-                                      name: file.name,
-                                      size: file.size,
-                                      type: file.type,
-                                      url: blobUrl,
-                                      file, // store file for later API upload
-                                    },
-                                  }));
+                                  if (file && applicationId) {
+                                    handleFileUpload(applicationId, "pan", file);
+                                  } else {
+                                    console.error("No applicationId or file found");
+                                  }
                                 }}
                                 className="hidden"
                               />
@@ -1312,7 +1237,7 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
                                 }}
                                 className="hidden"
                               />
-                              */}
+ */}
 
                               <label htmlFor="pan_document" className="cursor-pointer">
                                 <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
@@ -1579,21 +1504,6 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
                         </div>
                       </div>
 
-                      <div className="flex gap-3 pt-6">
-
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={handleSaveDocuments}
-                          className="flex-1 h-12"
-                        >
-                          <ChevronLeft className="h-4 w-4 mr-2" />
-                          Save documents
-                        </Button>
-
-
-
-                      </div>
                       {/* Summary */}
                       <div className="mt-6 p-4 bg-muted/50 rounded-lg">
                         <h3 className="font-semibold mb-3">Application Summary</h3>
