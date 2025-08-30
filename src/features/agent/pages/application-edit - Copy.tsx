@@ -1,56 +1,40 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
+import { mockApi } from "@/lib/mock-api";
 import { RoleGuard } from "@/components/role-guard";
 import { ApplicationForm } from "../components/application-form";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
-import axios from "axios";
-
 
 export function ApplicationEditPage() {
+  const { id } = useParams<{ id: string }>();
+
+  const { data: application, isLoading, error } = useQuery({
+    queryKey: ["application", id],
+    // queryFn: () => api.getApplication(id!), // id is now real backend ID
+    queryFn: async () => {
+        const response = await axios.get(
+          "http://192.168.0.123:8086/api/agents/${id}",
+          {
+            
+          }
+        );
+        return response.data; // backend should return an array
+      },    
+    enabled: !!id,
+  });
+
   // const { id } = useParams<{ id: string }>();
 
-  // const { data: application } = useQuery({
-  //   queryKey: ["application", id],
-  //   queryFn: () => api.getApplication(id!), // id is now real backend ID
+  // const { data: application, isLoading, error } = useQuery({
+  //   queryKey: ['application', id],
+  //   queryFn: () => mockApi.getApplication(id!),
   //   enabled: !!id,
   // });
 
 
-  const { id } = useParams<{ id: string }>();
 
-  const [application, setApplication] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // ✅ You already have the id (from save draft or props)
-  const applicationId = id;
-
-  useEffect(() => {
-    if (!applicationId) return; // don't call API if no ID yet
-
-    const fetchApplication = async () => {
-      try {
-        setLoading(true);
-        // /api/agents/applications/{applicationId}
-        const res = await axios.put(
-          `http://192.168.0.123:8086/api/agents/applications/${applicationId}/`
-        );
-        setApplication(res.data);
-      } catch (err: any) {
-        setError(err.message || "Failed to fetch");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchApplication();
-  }, [applicationId]);
-
-
-
-  if (loading) {
+  if (isLoading) {
     return (
       <RoleGuard allowedRoles={['AGENT']}>
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">

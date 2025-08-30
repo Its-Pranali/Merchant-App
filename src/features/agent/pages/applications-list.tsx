@@ -41,7 +41,7 @@ export function ApplicationsListPage() {
     queryKey: ['applications', { status: statusFilter, q: searchQuery }],
     queryFn: async () => {
       const response = await axios.get(
-        "http://192.168.0.123:8081/api/agents/getAllApplications",
+        "http://192.168.0.123:8086/api/agents/getAllApplications",
         {
           params: {
             status: statusFilter === 'ALL' ? undefined : statusFilter,
@@ -76,7 +76,7 @@ export function ApplicationsListPage() {
       case 'DRAFT':
         return (
           <Button asChild size="sm" variant="outline">
-            <Link to={`/applications/${numericId}/edit`}>
+            <Link to={`/applications/${app.applicationId}/edit`}>
               <Edit className="h-4 w-4 mr-2" />
               Continue
             </Link>
@@ -85,7 +85,7 @@ export function ApplicationsListPage() {
       case 'DISCREPANCY':
         return (
           <Button asChild size="sm" variant="outline">
-            <Link to={`/applications/${numericId}/edit`}>
+            <Link to={`/applications/${app.applicationId}/edit`}>
               <Edit className="h-4 w-4 mr-2" />
               Fix Issues
             </Link>
@@ -101,7 +101,7 @@ export function ApplicationsListPage() {
       case 'APPROVED':
         return (
           <Button asChild size="sm" variant="outline">
-            <Link to={`/applications/${numericId}/qr`}>
+            <Link to={`/applications/${app.applicationId}/edit`}>
               <FileText className="h-4 w-4 mr-2" />
               View QR
             </Link>

@@ -44,7 +44,7 @@ export function ReviewQueuePage() {
   const { data: applications = [], isLoading } = useQuery({
   queryKey: ['applications', { role: 'APPROVER', filters }],
   queryFn: async () => {
-    const response = await axios.get("http://192.168.0.123:8081/api/approver/applications/submitted", {
+    const response = await axios.get("http://192.168.0.123:8086/api/approver/applications/submitted", {
       params: {
         role: "APPROVER",
         status: filters.statuses.length > 0 ? filters.statuses.join(",") : "SUBMITTED",
