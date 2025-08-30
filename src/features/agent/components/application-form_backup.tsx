@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import axios from "axios";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -12,8 +12,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
+import { useEffect, useRef } from "react";
 import * as pdfjsLib from "pdfjs-dist";
 import pdfjsWorker from "pdfjs-dist/build/pdf.worker?url";
+import { v4 as uuidv4 } from "uuid";
+
+const uniqueId = uuidv4(); // generates each render
+console.log("id " + uniqueId);
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 import {
   ChevronLeft,
   ChevronRight,
@@ -32,11 +38,11 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { type } from "node:os";
 
-// configure PDF worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
-// --------------------- Validation Schema ---------------------
+
+// Form validation schema
 const applicationSchema = z.object({
   // Stage 1: Business Information
   appl_name: z.string().min(1, "Application name is required"),
@@ -66,7 +72,7 @@ const applicationSchema = z.object({
   me_ifsc: z.string().regex(/^[A-Z]{4}0[A-Z0-9]{6}$/, "Invalid IFSC code"),
   me_ac_no: z.string().min(8, "Account number must be at least 8 digits"),
 
-  // Stage 6: Documents (stored in component state; keep optional here)
+  // Stage 6: Documents
   pan_document: z.any().optional(),
   aadhar_document: z.any().optional(),
   bank_statement: z.any().optional(),
@@ -78,6 +84,7 @@ const applicationSchema = z.object({
 
 type ApplicationFormData = z.infer<typeof applicationSchema>;
 
+
 const stages = [
   {
     id: 1,
@@ -86,7 +93,7 @@ const stages = [
     fields: [
       { name: "appl_name", required: true },
       { name: "firm", required: true },
-      { name: "dba", required: false }
+      { name: "dba", required: false } // optional
     ],
     description: "Basic business details"
   },
@@ -141,7 +148,9 @@ const stages = [
     id: 6,
     title: "Service Type",
     icon: Check,
-    fields: [{ name: "qr_boombox", required: true }],
+    fields: [
+      { name: "qr_boombox", required: true }
+    ],
     description: "Choose service type"
   },
   {
@@ -155,8 +164,11 @@ const stages = [
       { name: "shop_photo", required: true }
     ],
     description: "Upload required documents"
-  }
+  },
+
 ];
+
+
 
 const mccCodes = [
   { value: "5411", label: "5411 - Grocery Stores" },
@@ -188,8 +200,12 @@ interface UploadedFile {
   size: number;
   type: string;
   url?: string;
-  file: File; // keep actual file for upload
 }
+
+
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
+
 
 interface PDFPreviewProps {
   url: string;
@@ -202,6 +218,7 @@ export function PDFPreview({ url }: PDFPreviewProps) {
     const renderPage = async () => {
       const pdf = await pdfjsLib.getDocument(url).promise;
       const page = await pdf.getPage(1);
+
       const viewport = page.getViewport({ scale: 0.3 });
       const canvas = canvasRef.current!;
       const context = canvas.getContext("2d")!;
@@ -218,21 +235,23 @@ export function PDFPreview({ url }: PDFPreviewProps) {
   return <canvas ref={canvasRef} className="border rounded-md object-cover" style={{ width: "45px", height: "55px" }} />;
 }
 
+
+
+
+
+
+
 export function ApplicationForm({ initialData, isEdit = false }: ApplicationFormProps) {
   const [currentStage, setCurrentStage] = useState(1);
   const [uploadedFiles, setUploadedFiles] = useState<Record<string, UploadedFile>>({});
-  const [isDraftSaved, setIsDraftSaved] = useState(false);
-  const [applicationId, setApplicationId] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-
   const navigate = useNavigate();
   const { id } = useParams();
   const queryClient = useQueryClient();
 
+
   const form = useForm<ApplicationFormData>({
     resolver: zodResolver(applicationSchema),
-    mode: "onChange",
+    mode: "onChange", // ✅ validate on every change so isValid updates live
     defaultValues: {
       appl_name: "",
       firm: "",
@@ -261,7 +280,7 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
     },
   });
 
-  // ---------------- Save application (mock) ----------------
+
   const { mutate: saveApplication } = useMutation({
     mutationFn: async (data: ApplicationFormData) => {
       const applicationData = {
@@ -273,12 +292,12 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
         address1: data.inst_addr1,
         address2: data.inst_addr2 || data.inst_addr3,
         city: data.city,
-        state: "Maharashtra",
+        state: "Maharashtra", // Default for now
         pincode: data.inst_pincode,
         pan: data.pan,
-        gstin: "",
+        gstin: "", // Optional
         doiOrDob: data.pan_dob,
-        docs: [],
+        docs: [], // Will be handled separately
       };
 
       if (isEdit && id) {
@@ -289,7 +308,7 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
         );
       }
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['applications'] });
       toast.success(isEdit ? "Application updated successfully!" : "Application created successfully!");
       navigate('/applications');
@@ -300,59 +319,84 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
     },
   });
 
+  // const { mutate: submitApplication, isPending: isSubmitting } = useMutation({
+  //   mutationFn: async (data: ApplicationFormData) => {
+  //     // First save the application
+  //     const savedApp = await saveApplication(data);
+  //     // Then submit it
+  //     if (savedApp?.id) {
+  //       return mockApi.submitApplication(savedApp.id);
+  //     }
+  //     throw new Error("Failed to save application");
+  //   },
+  //   onSuccess: () => {
+  //     queryClient.invalidateQueries({ queryKey: ['applications'] });
+  //     toast.success("Application submitted successfully!");
+  //     navigate('/applications');
+  //   },
+  //   onError: (error) => {
+  //     toast.error("Failed to submit application. Please try again.");
+  //     console.error(error);
+  //   },
+  // });
+
   const currentStageData = stages.find(s => s.id === currentStage)!;
   const progress = (currentStage / stages.length) * 100;
 
+  const validateCurrentStage = async () => {
+    const fieldsToValidate = currentStageData.fields;
+    const isValid = await form.trigger(fieldsToValidate as any);
+    return isValid;
+  };
+
+  // const nextStage = async () => {
+  //   const isValid = await validateCurrentStage();
+  //   if (isValid && currentStage < stages.length) {
+  //     setCurrentStage(currentStage + 1);
+  //   }
+  // };
+
+  const nextStage = () => {
+    if (!isStageComplete(currentStage)) {
+      toast.error("Please fill all required (*) fields before continuing.");
+      return;
+    }
+
+    if (currentStage < stages.length) {
+      setCurrentStage(currentStage + 1);
+    }
+  };
+
+
+  const prevStage = () => {
+    if (currentStage > 1) {
+      setCurrentStage(currentStage - 1);
+    }
+  };
+
+  const onSubmit = (data: ApplicationFormData) => {
+    saveApplication(data);
+  };
+
+  // const onSubmitForReview = (data: ApplicationFormData) => {
+  //   submitApplication(data);
+  // };
+
   const getFieldError = (fieldName: string) => {
-    return form.formState.errors[fieldName as keyof ApplicationFormData]?.message as string | undefined;
+    return form.formState.errors[fieldName as keyof ApplicationFormData]?.message;
   };
 
-  // ---------------- File helpers (select & remove only) ----------------
-  const handleFileSelect = (fieldName: string, file: File | undefined | null) => {
-    if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("File size must be less than 5MB");
-      return;
-    }
-
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
-    const allowImagesOnly = fieldName === "shop_photo";
-    if (allowImagesOnly) {
-      if (!file.type.startsWith("image/")) {
-        toast.error("Shop photo must be an image (JPG/PNG)");
-        return;
-      }
-    } else if (!allowedTypes.includes(file.type)) {
-      toast.error("Only JPG, PNG, and PDF files are allowed");
-      return;
-    }
-
-    const url = URL.createObjectURL(file);
-
-    setUploadedFiles(prev => ({
-      ...prev,
-      [fieldName]: {
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        url,
-        file
-      }
-    }));
-
-    // keep RHF value in sync if you need to submit non-file metadata too
-    form.setValue(fieldName as keyof ApplicationFormData, file as any);
-  };
 
   const removeFile = (fieldName: string) => {
     const file = uploadedFiles[fieldName];
-    if (file?.url) URL.revokeObjectURL(file.url);
+    if (file?.url) {
+      URL.revokeObjectURL(file.url);
+    }
 
     setUploadedFiles(prev => {
-      const copy = { ...prev };
-      delete copy[fieldName];
-      return copy;
+      const newFiles = { ...prev };
+      delete newFiles[fieldName];
+      return newFiles;
     });
 
     form.setValue(fieldName as keyof ApplicationFormData, null as any);
@@ -366,33 +410,103 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  // ---------------- Stage completion logic ----------------
+  // const isStageComplete = (stageId: number) => {
+  //   const stage = stages.find(s => s.id === stageId);
+  //   if (!stage) return false;
+
+  //   // For document stage, at least one document should be uploaded
+  //   if (stageId === 6) {
+  //     return Object.keys(uploadedFiles).length > 0;
+  //   }
+
+  //   return stage.fields.every(field => {
+  //     const value = form.getValues(field as keyof ApplicationFormData);
+  //     return value && value.toString().trim() !== "";
+  //   });
+  // };
+
+
   const isStageComplete = (stageId: number) => {
     const stage = stages.find(s => s.id === stageId);
     if (!stage) return false;
 
-    // Documents are stage 7 in this file
+    // For document stage, at least one document required
     if (stageId === 7) {
       return Object.keys(uploadedFiles).length > 0;
     }
 
     return stage.fields
-      .filter(f => f.required)
+      .filter(f => f.required) //  only required fields matter
       .every(f => {
         const value = form.getValues(f.name as keyof ApplicationFormData);
         return value && value.toString().trim() !== "";
       });
   };
 
-  // ---------------- Save Draft ----------------
+
+  const onSubmitForReview = async (data: ApplicationFormData) => {
+    try {
+      const formData = new FormData();
+
+      // Append all normal fields
+      Object.entries(data).forEach(([key, value]) => {
+        if (
+          key !== "pan_document" &&
+          key !== "aadhar_document" &&
+          key !== "bank_statement" &&
+          key !== "shop_photo"
+        ) {
+          formData.append(key, value as string);
+        }
+      });
+
+      // Append files (if uploaded)
+      if (uploadedFiles.pan_document) {
+        formData.append("pan_document", uploadedFiles.pan_document);
+      }
+      if (uploadedFiles.aadhar_document) {
+        formData.append("aadhar_document", uploadedFiles.aadhar_document);
+      }
+      if (uploadedFiles.bank_statement) {
+        formData.append("bank_statement", uploadedFiles.bank_statement);
+      }
+      if (uploadedFiles.shop_photo) {
+        formData.append("shop_photo", uploadedFiles.shop_photo);
+      }
+
+      // Submit to API
+      const response = await axios.post(
+        `http://192.168.0.144:8086/api/agents/applications/submit`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      console.log(" Submitted successfully:", response.data);
+      alert("Application submitted successfully!");
+
+    } catch (error: any) {
+      console.error(" Submission failed:", error);
+      alert(error.response?.data?.message || "Submission failed");
+    }
+  };
+
+
+  const [isDraftSaved, setIsDraftSaved] = useState(false);
+  const [applicationId, setApplicationId] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // ---------------- SAVE DRAFT ----------------
   const agent_id = 10;
 
   const handleSaveDraft = async (data: ApplicationFormData) => {
     try {
       setIsSaving(true);
-      
 
-      
       const payload = {
         applName: data.appl_name || "",
         bankStatement: data.bank_statement || "",
@@ -417,7 +531,7 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
       };
 
       const response = await fetch(
-        `http://192.168.0.123:8086/api/agents/${agent_id}/saveApplicationDraft`,
+        `http://192.168.0.123:8081/api/agents/${agent_id}/saveApplicationDraft`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -425,7 +539,9 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
         }
       );
 
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
       const result = await response.json();
       console.log("Draft Response:", result);
@@ -433,77 +549,111 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
       if (result?.applicationId) {
         setApplicationId(result.applicationId);
         setIsDraftSaved(true);
-        toast.success("Draft saved successfully!");
-
-        return result.applicationId;
+        alert("Draft saved successfully!");
+        return result.applicationId; // return so button can also use
       } else {
         setIsDraftSaved(false);
-        toast.success("Draft saved, but no applicationId returned.");
-     
+        alert("Draft saved, but no applicationId returned.");
       }
     } catch (error) {
       console.error("Error saving draft:", error);
       setIsDraftSaved(false);
-      toast.error("Failed to save draft");
+      alert("Failed to save draft");
     } finally {
       setIsSaving(false);
     }
   };
 
-  // ---------------- BULK upload: one request with arrays ----------------
-  const docTypeMap: Record<string, string> = {
-    pan_document: "pan",
-    aadhar_document: "aadhaar",
-    bank_statement: "bankstatement",
-    shop_photo: "shopphoto",
-  };
 
-  const uploadAllDocuments = async () => {
-    if (!applicationId) {
-      toast.error("Application ID not found. Please save draft first.");
-      return;
-    }
+  //---------------Upload Ducuments----------------
 
-    const entries = Object.entries(uploadedFiles);
-    if (entries.length === 0) {
-      toast.error("Please select at least one document to upload.");
-      return;
-    }
-
+  const handleFileUpload = async (
+    applicationId: string,
+    documentType: string,
+    file: File
+  ) => {
     try {
       const formData = new FormData();
-      for (const [fieldName, f] of entries) {
-        if (!f?.file) continue;
-        const mappedType = docTypeMap[fieldName] ?? fieldName;
+      formData.append("file", file); // backend expects "file" key
 
-        // arrays: files + their types aligned by index
-        formData.append("files", f.file, f.name);
-        formData.append("documentTypes[]", mappedType);
-      }
+      // Map frontend keys → backend keys
+      const typeMap: Record<string, string> = {
+        pan_document: "pan",
+        aadhar_document: "aadhaar",
+        bank_statement: "bankstatement",
+        shop_photo: "shopphoto",
+      };
 
-      // NOTE: adjust URL or field names if your backend differs
-      const res = await fetch(
-        `http://192.168.0.123:8086/api/v1/files/applications/${applicationId}/documents/upload`,
+      const doc_type = typeMap[documentType] || documentType;
+
+      const response = await fetch(
+        `http://192.168.0.123:8081/api/v1/files/applications/${applicationId}/documents/${doc_type}/upload`,
         {
           method: "POST",
           body: formData,
         }
       );
 
-      if (!res.ok) throw new Error(`Upload failed with status ${res.status}`);
-      const result = await res.json();
-      console.log("Bulk upload successful:", result);
-      toast.success("All documents uploaded successfully!");
-    } catch (err) {
-      console.error("Bulk upload error:", err);
-      toast.error("Failed to upload all documents");
+      if (!response.ok) {
+        throw new Error(`Upload failed with status ${response.status}`);
+      }
+
+      // Detect whether backend returns JSON or plain text
+      const contentType = response.headers.get("content-type");
+      let result;
+      if (contentType && contentType.includes("application/json")) {
+        result = await response.json();
+      } else {
+        result = await response.text();
+      }
+
+      console.log("Upload successful:", result);
+      toast.success(`${doc_type.toUpperCase()} uploaded successfully!`);
+      return result;
+    } catch (error) {
+      console.error("File upload error:", error);
+      throw error;
     }
   };
 
-  // ---------------- Final submit ----------------
+
+  const handleUploadAll = async () => {
+    if (!applicationId) {
+      console.error("No applicationId found");
+      return;
+    }
+
+    for (const [docType, fileData] of Object.entries(uploadedFiles)) {
+      if (!fileData?.file) continue; // skip empty slots
+
+      const formData = new FormData();
+      formData.append("file", fileData.file);
+
+      try {
+        const res = await fetch(
+          `http://192.168.0.123:8081/api/v1/files/applications/${applicationId}/documents/${docType}/upload`,
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
+
+        if (!res.ok) throw new Error(`Upload failed for ${docType}`);
+        console.log(`${docType} uploaded successfully`);
+
+      } catch (err) {
+        console.error("Upload error:", err);
+      }
+    }
+  };
+
+
+
+
+  // ---------------- FINAL SUBMIT ----------------
   const handleFinalSubmit = async () => {
     if (!applicationId) {
-      toast.error("No applicationId found. Please save draft first.");
+      alert("No applicationId found. Please save draft first.");
       return;
     }
 
@@ -511,45 +661,35 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
       setIsSaving(true);
 
       const response = await fetch(
-        `http://192.168.0.123:8086/api/agents/applications/${applicationId}/submitDraftedApplication`,
+        `http://192.168.0.123:8081/api/agents/applications/${applicationId}/submitDraftedApplication`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
         }
       );
 
-      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
       const result = await response.json();
       console.log("Final Submit Response:", result);
-      toast.success("Application submitted successfully!");
-      // navigate if needed
+
+      alert("Application submitted successfully!");
     } catch (error) {
       console.error("Error submitting application:", error);
-      toast.error("Failed to submit application");
+      alert("Failed to submit application");
     } finally {
       setIsSaving(false);
     }
   };
 
-  // ---------------- Stage navigation ----------------
-  const nextStage = () => {
-    if (!isStageComplete(currentStage)) {
-      toast.error("Please fill all required (*) fields before continuing.");
-      return;
-    }
-    if (currentStage < stages.length) setCurrentStage(currentStage + 1);
-  };
 
-  const prevStage = () => {
-    if (currentStage > 1) setCurrentStage(currentStage - 1);
-  };
 
-  // ---------------- Render ----------------
-  const StageIcon = currentStageData.icon;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
+
       <div className="w-full md:w-[51%] mx-auto space-y-6">
         {/* Header */}
         <div className="text-center space-y-2">
@@ -576,6 +716,8 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
             {stages.map((stage) => {
               const Icon = stage.icon;
               const isActive = stage.id === currentStage;
+              const isCompleted = stage.id < currentStage || isStageComplete(stage.id);
+
               return (
                 <div
                   key={stage.id}
@@ -625,7 +767,7 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
           <CardHeader className="pb-4">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-primary/10 rounded-lg">
-                <StageIcon className="h-5 w-5 text-primary" />
+                <currentStageData.icon className="h-5 w-5 text-primary" />
               </div>
               <div>
                 <CardTitle className="text-lg">{currentStageData.title}</CardTitle>
@@ -1005,9 +1147,11 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
                     </>
                   )}
 
-                  {/* Stage 7: Documents */}
+                  {/* Stage 7: Service Type */}
                   {currentStage === 7 && (
                     <>
+
+
                       <div className="space-y-6">
                         <div className="text-center">
                           <h3 className="text-lg font-semibold mb-2">Upload Required Documents</h3>
@@ -1025,18 +1169,39 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
                                 type="file"
                                 id="pan_document"
                                 accept="image/*,.pdf"
-                                onChange={(e) => handleFileSelect("pan_document", e.target.files?.[0])}
+                            
+
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    const blobUrl = URL.createObjectURL(file);
+                                    setUploadedFiles((prev) => ({
+                                      ...prev,
+                                      pan_document: {
+                                        file, // store raw file
+                                        name: file.name,
+                                        size: file.size,
+                                        type: file.type,
+                                        url: blobUrl, // preview
+                                      },
+                                    }));
+                                  }
+                                }}
+
                                 className="hidden"
                               />
+
                               <label htmlFor="pan_document" className="cursor-pointer">
                                 <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                                <p className="text-sm font-medium">Select PAN Document</p>
+                                <p className="text-sm font-medium">Upload PAN Card</p>
                                 <p className="text-xs text-muted-foreground">JPG, PNG or PDF</p>
                               </label>
                             </div>
                           ) : (
                             <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
+                          
                               <div className="flex items-center gap-3 w-full">
+
                                 <FileText className="h-8 w-5 text-green-600" />
                                 <div>
                                   <p className="text-sm font-medium text-green-800 dark:text-green-200">
@@ -1046,9 +1211,13 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
                                     {formatFileSize(uploadedFiles.pan_document.size)}
                                   </p>
                                 </div>
+
+
                               </div>
                               <div className="flex items-center justify-end w-full gap-3">
+                                <div></div>
                                 {uploadedFiles.pan_document.type.startsWith("image/") ? (
+                                  // Show image thumbnail
                                   <img
                                     src={uploadedFiles.pan_document.url}
                                     alt="Preview"
@@ -1056,11 +1225,16 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
                                     style={{ width: "45px", height: "55px" }}
                                   />
                                 ) : uploadedFiles.pan_document.type === "application/pdf" ? (
-                                  <PDFPreview url={uploadedFiles.pan_document.url!} />
+                                  // Show PDF first page
+                                  <PDFPreview url={uploadedFiles.pan_document.url} />
                                 ) : (
+                                  // Fallback icon
                                   <FileText className="h-6 w-6 text-gray-600" />
                                 )}
+
                               </div>
+
+
                               <Button
                                 type="button"
                                 variant="ghost"
@@ -1083,12 +1257,27 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
                                 type="file"
                                 id="aadhar_document"
                                 accept="image/*,.pdf"
-                                onChange={(e) => handleFileSelect("aadhar_document", e.target.files?.[0])}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    const blobUrl = URL.createObjectURL(file);
+                                    setUploadedFiles((prev) => ({
+                                      ...prev,
+                                      pan_document: {
+                                        file, // store raw file
+                                        name: file.name,
+                                        size: file.size,
+                                        type: file.type,
+                                        url: blobUrl, // preview
+                                      },
+                                    }));
+                                  }
+                                }}
                                 className="hidden"
                               />
                               <label htmlFor="aadhar_document" className="cursor-pointer">
                                 <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                                <p className="text-sm font-medium">Select Aadhaar Document</p>
+                                <p className="text-sm font-medium">Upload Aadhaar Card</p>
                                 <p className="text-xs text-muted-foreground">JPG, PNG or PDF</p>
                               </label>
                             </div>
@@ -1105,8 +1294,11 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
                                   </p>
                                 </div>
                               </div>
+
                               <div className="flex items-center justify-end w-full gap-3">
+                                <div></div>
                                 {uploadedFiles.aadhar_document.type.startsWith("image/") ? (
+                                  // Show image thumbnail
                                   <img
                                     src={uploadedFiles.aadhar_document.url}
                                     alt="Preview"
@@ -1114,10 +1306,13 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
                                     style={{ width: "45px", height: "55px" }}
                                   />
                                 ) : uploadedFiles.aadhar_document.type === "application/pdf" ? (
-                                  <PDFPreview url={uploadedFiles.aadhar_document.url!} />
+                                  // Show PDF first page
+                                  <PDFPreview url={uploadedFiles.aadhar_document.url} />
                                 ) : (
+                                  // Fallback icon
                                   <FileText className="h-6 w-6 text-gray-600" />
                                 )}
+
                               </div>
                               <Button
                                 type="button"
@@ -1132,7 +1327,7 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
                           )}
                         </div>
 
-                        {/* Bank Statement (optional) */}
+                        {/* Bank Statement */}
                         <div className="space-y-3">
                           <Label className="text-base font-medium">Bank Statement</Label>
                           <p className="text-xs text-muted-foreground">Recent bank statement (optional)</p>
@@ -1142,12 +1337,15 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
                                 type="file"
                                 id="bank_statement"
                                 accept="image/*,.pdf"
-                                onChange={(e) => handleFileSelect("bank_statement", e.target.files?.[0])}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) handleFileUpload('bank_statement', file);
+                                }}
                                 className="hidden"
                               />
                               <label htmlFor="bank_statement" className="cursor-pointer">
                                 <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                                <p className="text-sm font-medium">Select Bank Statement</p>
+                                <p className="text-sm font-medium">Upload Bank Statement</p>
                                 <p className="text-xs text-muted-foreground">JPG, PNG or PDF</p>
                               </label>
                             </div>
@@ -1164,8 +1362,11 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
                                   </p>
                                 </div>
                               </div>
+
                               <div className="flex items-center justify-end w-full gap-3">
+                                <div></div>
                                 {uploadedFiles.bank_statement.type.startsWith("image/") ? (
+                                  // Show image thumbnail
                                   <img
                                     src={uploadedFiles.bank_statement.url}
                                     alt="Preview"
@@ -1173,11 +1374,15 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
                                     style={{ width: "45px", height: "55px" }}
                                   />
                                 ) : uploadedFiles.bank_statement.type === "application/pdf" ? (
-                                  <PDFPreview url={uploadedFiles.bank_statement.url!} />
+                                  // Show PDF first page
+                                  <PDFPreview url={uploadedFiles.bank_statement.url} />
                                 ) : (
+                                  // Fallback icon
                                   <FileText className="h-6 w-6 text-gray-600" />
                                 )}
+
                               </div>
+
                               <Button
                                 type="button"
                                 variant="ghost"
@@ -1201,12 +1406,15 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
                                 type="file"
                                 id="shop_photo"
                                 accept="image/*"
-                                onChange={(e) => handleFileSelect("shop_photo", e.target.files?.[0])}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) handleFileUpload('shop_photo', file);
+                                }}
                                 className="hidden"
                               />
                               <label htmlFor="shop_photo" className="cursor-pointer">
                                 <Image className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                                <p className="text-sm font-medium">Select Shop Photo</p>
+                                <p className="text-sm font-medium">Upload Shop Photo</p>
                                 <p className="text-xs text-muted-foreground">JPG or PNG only</p>
                               </label>
                             </div>
@@ -1247,20 +1455,21 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
                           )}
                         </div>
                       </div>
-
-                      {/* Actions for Documents */}
                       <div className="flex gap-3 pt-6">
+
                         <Button
                           type="button"
                           variant="outline"
-                          onClick={uploadAllDocuments}
+                          onClick={handleUploadAll}
                           className="flex-1 h-12"
                         >
                           <ChevronLeft className="h-4 w-4 mr-2" />
-                          Upload All Documents
+                          Upload Documents
                         </Button>
 
+
                       </div>
+
 
                       {/* Summary */}
                       <div className="mt-6 p-4 bg-muted/50 rounded-lg">
@@ -1318,6 +1527,7 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
                   >
                     {isSaving ? "Saving..." : "Save Draft"}
                   </Button>
+
                 )}
 
                 {currentStage < stages.length ? (
@@ -1325,23 +1535,26 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
                     type="button"
                     onClick={nextStage}
                     className="flex-1 h-12"
-                    disabled={currentStage === 6 && !isDraftSaved}
+                    disabled={currentStage === 6 && !isDraftSaved} // disabled if draft not saved
                   >
                     Next
                     <ChevronRight className="h-4 w-4 ml-2" />
                   </Button>
+
                 ) : (
                   <div className="flex gap-2 flex-1">
+
                     <Button
                       type="button"
                       onClick={async () => {
                         if (!applicationId) return;
+
                         setIsSubmitting(true);
                         try {
-                          const response = await fetch(
-                            `http://192.168.0.123:8086/api/agents/applications/${applicationId}/submitDraftedApplication`,
-                            { method: "POST" }
-                          );
+                          const response = await fetch(`http://192.168.0.123:8081/api/agents/applications/${applicationId}/submitDraftedApplication`, {
+                            method: "POST",
+                          });
+
                           if (!response.ok) throw new Error("Submission failed");
                           toast.success("Application submitted successfully!");
                         } catch (error) {
@@ -1351,12 +1564,16 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
                           setIsSubmitting(false);
                         }
                       }}
-                      // disabled={!isDraftSaved || isSubmitting}
+                      // disabled={!isDraftSaved || isSubmitting} // only enable after draft saved
                       className="flex-1 h-12"
                     >
                       {isSubmitting ? "Submitting..." : "Submit"}
                     </Button>
+
+
                   </div>
+
+
                 )}
               </div>
             </form>
