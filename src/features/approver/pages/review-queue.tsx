@@ -56,41 +56,6 @@ export function ReviewQueuePage() {
   },
 });
 
-// const { data: applications = [], isLoading } = useQuery({
-//   queryKey: ['applications', { role: 'APPROVER', filters }],
-//   queryFn: async () => {
-//     const response = await axios.get("http://192.168.0.123:8086/api/approver/applications/submitted", {
-//       params: {
-//         role: "APPROVER",
-//         status: filters.statuses.length > 0 ? filters.statuses.join(",") : "SUBMITTED",
-//       },
-//     });
-
-//     // console.log("API response:", response.data);
-//     return response.data; // 👈 adjust based on API
-//   },
-// });
-
-
-
-
-  // const { data: applications = [], isLoading } = useQuery({
-  //   queryKey: ['applications', { role: 'APPROVER', filters }],
-  //   // queryFn: () => mockApi.listApplications({
-  //   //   role: 'APPROVER',
-  //   //   status: filters.statuses.length > 0 ? filters.statuses : undefined,
-  //   //   q: filters.search || undefined,
-  //   // }),
-
-  //   queryFn: () => mockApi.listApplications({
-  //     role: 'APPROVER',
-  //     status: filters.statuses.length > 0 ? filters.statuses : undefined,
-  //     q: filters.search || undefined,
-  //   }),
-
-  // });
-
-
 
 
   // Filter applications based on advanced filters
@@ -254,7 +219,7 @@ export function ReviewQueuePage() {
                           <div className="flex items-center gap-2">
                             <User className="h-4 w-4 text-muted-foreground" />
                             <span className="font-medium">Contact:</span>
-                            <span className="break-words">{app.contactName}</span>
+                            <span className="break-words">{app.contactPerson}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <Phone className="h-4 w-4 text-muted-foreground" />

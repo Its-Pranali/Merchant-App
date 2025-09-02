@@ -37,21 +37,29 @@ export function ApplicationsListPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<ApplicationStatus | 'ALL'>('ALL');
 
-  const { data: applications = [], isLoading } = useQuery({
+
+  const { data: rawApplications = [], isLoading } = useQuery({
     queryKey: ['applications', { status: statusFilter, q: searchQuery }],
     queryFn: async () => {
       const response = await axios.get(
-        "http://192.168.0.123:8086/api/agents/getAllApplications",
-        {
-          params: {
-            status: statusFilter === 'ALL' ? undefined : statusFilter,
-            q: searchQuery || undefined,
-          },
-        }
+        "http://192.168.0.123:8086/api/agents/getAllApplications"
       );
-      return response.data; // backend should return an array
+      return response.data; // always full list
     },
-    keepPreviousData: true, // optional, keeps old data while fetching new
+    keepPreviousData: true,
+  });
+
+  const applications = rawApplications.filter((app: any) => {
+    const matchesStatus =
+      statusFilter === "ALL" ? true : app.status === statusFilter;
+    const matchesSearch =
+      !searchQuery ||
+      app.applName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      app.contactPerson?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      app.mobile?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      app.pan?.toLowerCase().includes(searchQuery.toLowerCase());
+
+    return matchesStatus && matchesSearch;
   });
 
   // Map UUIDs to simple numeric IDs
@@ -61,12 +69,7 @@ export function ApplicationsListPage() {
   });
 
 
-  // // After fetching applications
-  // const appIdMap: Record<number, string> = {};
-  // applications.forEach((app, index) => {
-  //   appIdMap[index + 1] = app.applicationId; // numericId -> UUID
-  // });
-  // localStorage.setItem('appIdMap', JSON.stringify(appIdMap));
+
 
 
   const getActionButton = (app: any) => {
@@ -275,3 +278,6 @@ export function ApplicationsListPage() {
     </RoleGuard>
   );
 }
+
+
+
