@@ -14,7 +14,7 @@ export function ApplicationEditPage() {
     // queryFn: () => api.getApplication(id!), // id is now real backend ID
     queryFn: async () => {
         const response = await axios.get(
-          "http://192.168.0.123:8086/api/agents/${id}",
+          "http://192.168.0.143:8086/api/agents/${id}",
           {
             
           }

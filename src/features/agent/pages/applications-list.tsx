@@ -42,7 +42,7 @@ export function ApplicationsListPage() {
     queryKey: ['applications', { status: statusFilter, q: searchQuery }],
     queryFn: async () => {
       const response = await axios.get(
-        "http://192.168.0.123:8086/api/agents/getAllApplications"
+        "http://192.168.0.143:8086/api/agents/getAllApplications"
       );
       return response.data; // always full list
     },

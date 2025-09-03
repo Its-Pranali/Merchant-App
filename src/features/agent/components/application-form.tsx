@@ -417,7 +417,7 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
       };
 
       const response = await fetch(
-        `http://192.168.0.123:8086/api/agents/${agent_id}/saveApplicationDraft`,
+        `http://192.168.0.143:8086/api/agents/${agent_id}/saveApplicationDraft`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -483,7 +483,7 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
 
       // NOTE: adjust URL or field names if your backend differs
       const res = await fetch(
-        `http://192.168.0.123:8086/api/v1/files/applications/${applicationId}/documents/upload`,
+        `http://192.168.0.143:8086/api/v1/files/applications/${applicationId}/documents/upload`,
         {
           method: "POST",
           body: formData,
@@ -511,7 +511,7 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
       setIsSaving(true);
 
       const response = await fetch(
-        `http://192.168.0.123:8086/api/agents/applications/${applicationId}/submitDraftedApplication`,
+        `http://192.168.0.143:8086/api/agents/applications/${applicationId}/submitDraftedApplication`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -1339,7 +1339,7 @@ export function ApplicationForm({ initialData, isEdit = false }: ApplicationForm
                         setIsSubmitting(true);
                         try {
                           const response = await fetch(
-                            `http://192.168.0.123:8086/api/agents/applications/${applicationId}/submitDraftedApplication`,
+                            `http://192.168.0.143:8086/api/agents/applications/${applicationId}/submitDraftedApplication`,
                             { method: "POST" }
                           );
                           if (!response.ok) throw new Error("Submission failed");

@@ -36,34 +36,29 @@ export function ReviewQueuePage() {
     agent: '',
     city: ''
   });
-
-
-
-
-
   const { data: applications = [], isLoading } = useQuery({
-  queryKey: ['applications', { role: 'APPROVER', filters }],
-  queryFn: async () => {
-    const response = await axios.get("http://192.168.0.123:8086/api/approver/applications/submitted", {
-      params: {
-        role: "APPROVER",
-        status: filters.statuses.length > 0 ? filters.statuses.join(",") : "SUBMITTED",
-        // q: filters.search || undefined,
-      },
-    });
-    console.log(response);
-    return response.data;
-  },
-});
+    queryKey: ['applications', { role: 'APPROVER', filters }],
+    queryFn: async () => {
+      const response = await axios.get("http://192.168.0.143:8086/api/approver/applications/submitted", {
+        params: {
+          role: "APPROVER",
+          status: filters.statuses.length > 0 ? filters.statuses.join(",") : "SUBMITTED",
+          // q: filters.search || undefined,
+        },
+      });
+      // console.log(response);
+      return response.data;
+    },
+  });
 
 
 
   // Filter applications based on advanced filters
   const filteredApplications = applications.filter(app => {
     // console.log("filteredApplications");
-    console.log("filteredApplications"+app.applicationId +"- -  -"+app.applName+"\n");
+    console.log("filteredApplications" + app.applicationId + "- -  -" + app.applName + "\n");
     // Date filtering
-    
+
     if (filters.dateFrom) {
       const appDate = new Date(app.updatedAt);
       const fromDate = new Date(filters.dateFrom);
@@ -280,7 +275,7 @@ export function ReviewQueuePage() {
                             </div>
                           </div>
                           <Button asChild size="sm" className="w-full sm:w-auto h-10">
-                            <Link to={`/applications/${app.id}/review`}>
+                            <Link to={`/applications/${app.applicationId}/review`}>
                               <Eye className="h-4 w-4 mr-2" />
                               Review
                             </Link>

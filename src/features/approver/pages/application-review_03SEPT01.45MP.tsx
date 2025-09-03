@@ -38,7 +38,6 @@ import {
 
 import { format } from "date-fns";
 
-
 const discrepancyCodes = [
   { code: "DOC_QUALITY", message: "Document image quality is poor or unclear" },
   { code: "DOC_MISMATCH", message: "Document details do not match application data" },
@@ -49,14 +48,7 @@ const discrepancyCodes = [
   { code: "BUSINESS_VERIFICATION", message: "Business details require additional verification" },
 ];
 
-const DocumentNameList: Record<string, string> = {
-  bankstatement: "Bank",
-  shopphoto: "Shop",
-  aadhaar: "Aadhaar",
-  pan: "PAN"
-};
 export function ApplicationReviewPage() {
-
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
@@ -71,11 +63,6 @@ export function ApplicationReviewPage() {
   const [showApproveDialog, setShowApproveDialog] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [showDiscrepancyDialog, setShowDiscrepancyDialog] = useState(false);
-
-  // 🔥 NEW STATES
-  const [activeTab, setActiveTab] = useState("details"); // track active tab
-  const [documents, setDocuments] = useState<any[]>([]); // store docs separately
-  const [docLoading, setDocLoading] = useState(false); // loading for docs
 
   useEffect(() => {
     if (!id) return;
@@ -97,57 +84,11 @@ export function ApplicationReviewPage() {
     fetchApplication();
   }, [id]);
 
-  // 🔥 Fetch documents only when "Documents" tab is clicked
-  useEffect(() => {
-    if (activeTab === "documents" && id) {
-      const fetchDocs = async () => {
-        try {
-          setDocLoading(true);
-          const res = await axios.get(
-            `http://192.168.0.143:8086/api/v1/files/applications/${id}/documentsList/urls`
-          );
-          setDocuments(res.data || []);
-        } catch (err) {
-          console.error(err);
-        } finally {
-          setDocLoading(false);
-        }
-      };
-
-      fetchDocs();
-    }
-  }, [activeTab, id]);
-
-
-  const sortedDocuments = Object.keys(documents)
-    .sort() // Alphabetically sort keys
-    .reduce((obj: Record<string, string>, key: string) => {
-      obj[key] = documents[key];
-      return obj;
-    }, {});
-
-  //  const handleApprove = (status:any,appId:any) => {
-
-  //   console.log(`/api/approver/applications/${appId}/action?status=${status}`); 
-
-  //   setShowApproveDialog(false);
-  // }
-
-  const handleApprove = async (status: any, appId: any) => {
-    try {
-      const url = `http://192.168.0.143:8086/api/approver/applications/${appId}/approve`;
-      // Call API (POST, but change to PUT/GET if needed)
-      const response = await axios.post(url);
-
-      console.log("Response:", response.data);
-      toast.success(`Application ${status} successfully!`);
-    } catch (error) {
-      console.error("Error approving application:", error);
-      toast.error("Something went wrong!");
-    } finally {
-      setShowApproveDialog(false);
-    }
+  const handleApprove = () => {
+    toast.success("Application approved!");
+    setShowApproveDialog(false);
   };
+
   const handleReject = () => {
     if (!rejectionReason.trim()) {
       toast.error("Please provide a rejection reason");
@@ -242,8 +183,7 @@ export function ApplicationReviewPage() {
                       <Button variant="outline" onClick={() => setShowApproveDialog(false)}>
                         Cancel
                       </Button>
-                      {/* <Button onClick={handleApprove('Approve')}>Approve</Button> */}
-                      <Button onClick={() => handleApprove("approved", id)}>Approve</Button>
+                      <Button onClick={handleApprove}>Approve</Button>
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
@@ -327,12 +267,7 @@ export function ApplicationReviewPage() {
         )}
 
         {/* Main Tabs */}
-        <Tabs
-          defaultValue="details"
-          value={activeTab} // 🔥 NEW
-          onValueChange={setActiveTab} // 🔥 NEW
-          className="space-y-6"
-        >
+        <Tabs defaultValue="details" className="space-y-6">
           <TabsList className="grid w-full grid-cols-3 h-12">
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="documents">Documents</TabsTrigger>
@@ -350,6 +285,7 @@ export function ApplicationReviewPage() {
               <CardContent className="space-y-4">
                 <p><strong>Business Name:</strong> {application.firm}</p>
                 <p><strong>PAN:</strong> {application.pan}</p>
+                {/* <p><strong>Email:</strong> domain@example.com</p> */}
               </CardContent>
             </Card>
 
@@ -375,13 +311,14 @@ export function ApplicationReviewPage() {
                     <Label className="text-muted-foreground">Email</Label>
                     <p className="font-medium break-all">
                       domain@example.com
-                    </p>
+                      {/* {application.email} */}
+                      </p>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Address Information */}
+             {/* Address Information */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -395,16 +332,20 @@ export function ApplicationReviewPage() {
                   {application.instAddr2 && <p>{application.instAddr2}</p>}
                   {application.instAddr3 && <p>{application.instAddr3}</p>}
                   <p className="break-words">
-                    {application?.city && application.city.trim() !== ""
-                      ? application.city + ","
+                     {application?.city && application.city.trim() !== "" 
+                      ? application.city + "," 
                       : " "}
-                    {application?.state && application.state.trim() !== ""
-                      ? application.state + ","
-                      : " "}
-                    {application?.instPincode && application.instPincode.trim() !== ""
-                      ? application.instPincode
+
+
+                      {application?.state && application.state.trim() !== "" 
+                      ? application.state+ ","
+                      : "  "}
+
+                      {application?.instPincode && application.instPincode.trim() !== "" 
+                      ? application.instPincode 
                       : "Pincode not found"}
-                  </p>
+                    {/* {application.city}, {application.state} , {application.instPincode} */}
+                    </p>
                 </div>
               </CardContent>
             </Card>
@@ -420,48 +361,23 @@ export function ApplicationReviewPage() {
                 <CardDescription>Review all uploaded documents</CardDescription>
               </CardHeader>
               <CardContent>
-
-                {docLoading ? (
-
-                  <p>Loading documents...</p>
-                ) : Object.values(sortedDocuments).length ? (
-                  Object.keys(sortedDocuments).map((key: string, index: number) => (
-                    <div
-                      key={index}
-                      className="border p-3 rounded-lg flex justify-between"
-                    >
-                      {/* <span>{key}</span> */}
-                      <span>{DocumentNameList[key] || key}</span>
-
+                {application.docs?.length ? (
+                  application.docs.map((doc: any) => (
+                    <div key={doc.id} className="border p-3 rounded-lg flex justify-between">
+                      <span>{doc.name}</span>
                       <div className="flex gap-2">
                         <Button size="sm" variant="outline">
-                          <Eye className="h-4 w-4 mr-2" />
-                          <a
-                            href={sortedDocuments[key]}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            View
-                          </a>
+                          <Eye className="h-4 w-4 mr-2" /> View
                         </Button>
-
                         <Button size="sm" variant="outline">
-                          <Download className="h-4 w-4 mr-2" />
-                          <a
-                            href={sortedDocuments[key]}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            Download
-                          </a>
+                          <Download className="h-4 w-4 mr-2" /> Download
                         </Button>
                       </div>
                     </div>
                   ))
                 ) : (
-                  <p>No documents found</p>
+                  <p>No documents uploaded</p>
                 )}
-
               </CardContent>
             </Card>
           </TabsContent>
