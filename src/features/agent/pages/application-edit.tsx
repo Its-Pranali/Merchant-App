@@ -34,8 +34,8 @@ export function ApplicationEditPage() {
       try {
         setLoading(true);
         // /api/agents/applications/{applicationId}
-        const res = await axios.put(
-          `http://192.168.0.123:8086/api/agents/applications/${applicationId}/`
+        const res = await axios.get(
+          `http://192.168.0.123:8086/api/agents/draft/${applicationId}`
         );
         setApplication(res.data);
       } catch (err: any) {
