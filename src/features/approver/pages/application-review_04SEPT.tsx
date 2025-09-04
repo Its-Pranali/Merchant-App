@@ -37,7 +37,6 @@ import {
 } from "@/components/ui/dialog";
 
 import { format } from "date-fns";
-import { type } from "node:os";
 
 
 const discrepancyCodes = [
@@ -149,88 +148,57 @@ export function ApplicationReviewPage() {
       setShowApproveDialog(false);
     }
   };
+  // const handleReject = () => {
+  //   if (!rejectionReason.trim()) {
+  //     toast.error("Please provide a rejection reason");
+  //     return;
+  //   }
+  //   toast.error("Application rejected");
+  //   setShowRejectDialog(false);
+  // };
 
-  // application Rejected api
-  const [reason, setReason] = useState("");
-  const [comment, setComment] = useState("");
+  // Add this near other states
+  const [reason, setReason] = useState(""); // Optional: keep if you want separate field
+  const [comment, setComment] = useState(""); // This will be the textarea input
   const [loadingReject, setLoadingReject] = useState(false);
 
-  const handleReject = async (status: any, appId: any) => {
-    if (!rejectionReason.trim()) {
-      alert("Please provide a rejection reason");
+  const handleReject = async () => {
+    if (!comment.trim()) {
+      toast.error("Please provide a rejection comment");
       return;
     }
 
-    // 🔥 Create FormData object
-    const formData = new FormData();
-    formData.append("reason", "");
-    formData.append("rejectionReason", rejectionReason);
-    formData.append("status", "rejected");
-
+    setLoadingReject(true);
     try {
+      const payload = {
+        reason: reason || "Rejected by approver", // Default if reason is blank
+        comment: comment,
+        status: "rejected",
+      };
+
       const response = await axios.post(
-        `http://192.168.0.143:8086/api/approver/applications/${appId}/reject`,
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data", // Important!
-          },
-        }
+        `http://192.168.0.143:8086/api/approver/applications/${id}/reject`,
+        payload
       );
 
-      console.log("Response:", response.data);
-      alert("Application rejected successfully!");
+      console.log(response.data);
+      toast.error("Application rejected successfully!");
       setShowRejectDialog(false);
     } catch (error) {
-      console.error("Error rejecting application:", error);
-      alert("Failed to reject application.");
+      console.error(error);
+      toast.error("Failed to reject application.");
+    } finally {
+      setLoadingReject(false);
     }
   };
 
-  // const [selectedDiscrepancies, setSelectedDiscrepancies] = useState<string[]>([]);
-
-  const handleDiscrepancy = async (status: any, appId: any) => {
-    console.log("Selected discrepancies:", selectedDiscrepancies);
-    // alert(`Selected: ${selectedDiscrepancies.join(", ")}`);
-    let selectedReasons = selectedDiscrepancies.join(", ");
-    // /api/approver/applications/{applicationId}/discrepancy
-    const finalCommentWithReasons = String(selectedReasons) +','+ customDiscrepancy;
-    // console.log(typeof(finalCommentWithReasons));
-    // return;
-
-      const FormData = {
-        applicationId: appId, // 🔥 send array as JSON
-      reason: finalCommentWithReasons,
-      discrepancyReason: finalCommentWithReasons,
-      status: "discrepancy",
-    };
-
-
-    // const formData = new FormData();
-    // formData.append("reason","" );
-    // formData.append("applicationId", appId);
-    // formData.append("discrepancyReason", finalCommentWithReasons);
-    // // formData.append("status", "DISCREPANCY");
-    // formData.append("status", "discrepancy");
-
-    try {
-      const response = await axios.post(
-        `http://192.168.0.143:8086/api/approver/applications/${appId}/discrepancy`,
-        FormData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data", // Important!
-          },
-        }
-      );
-
-      console.log("Response:", response.data);
-      alert("Application DISCREPANCY successfully!");
-      setShowDiscrepancyDialog(false);
-    } catch (error) {
-      console.error("Error rejecting application:", error);
-      alert("Failed to DISCREPANCY application.");
+  const handleDiscrepancy = () => {
+    if (!selectedDiscrepancies.length && !customDiscrepancy.trim()) {
+      toast.error("Please select at least one discrepancy");
+      return;
     }
+    toast.success("Discrepancy set successfully!");
+    setShowDiscrepancyDialog(false);
   };
 
   const toggleDiscrepancy = (code: string) => {
@@ -339,8 +307,7 @@ export function ApplicationReviewPage() {
                       <Button variant="outline" onClick={() => setShowRejectDialog(false)}>
                         Cancel
                       </Button>
-                      {/* <Button variant="destructive" onClick={handleReject}> */}
-                      <Button onClick={() => handleReject("REJECTED", id)}>
+                      <Button variant="destructive" onClick={handleReject}>
                         Reject
                       </Button>
                     </DialogFooter>
@@ -385,8 +352,7 @@ export function ApplicationReviewPage() {
                       <Button variant="outline" onClick={() => setShowDiscrepancyDialog(false)}>
                         Cancel
                       </Button>
-                      {/* <Button onClick={handleDiscrepancy("Discrepancy", id)}>Set Discrepancy</Button> */}
-                      <Button onClick={() => handleDiscrepancy("DISCREPANCY", id)}>Set Discrepancy</Button>
+                      <Button onClick={handleDiscrepancy}>Set Discrepancy</Button>
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
